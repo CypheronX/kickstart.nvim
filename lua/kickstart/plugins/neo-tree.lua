@@ -10,11 +10,19 @@ vim.pack.add {
 vim.keymap.set('n', '\\', '<Cmd>Neotree reveal<CR>', { desc = 'NeoTree reveal', silent = true })
 
 require('neo-tree').setup {
+  close_if_last_window = true,
   filesystem = {
     window = {
       mappings = {
         ['\\'] = 'close_window',
       },
+    },
+  },
+  event_handlers = {
+    {
+      -- Close the tree as soon as a file is opened from it
+      event = 'file_opened',
+      handler = function() require('neo-tree.command').execute { action = 'close' } end,
     },
   },
 }
