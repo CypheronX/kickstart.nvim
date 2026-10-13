@@ -1,5 +1,36 @@
 # kickstart.nvim
 
+## Quick install (this fork)
+
+One script per platform installs everything missing (Neovim >= 0.12, git, ripgrep, fd,
+Node.js, a C compiler, tree-sitter CLI, .NET SDK 10, JetBrainsMono Nerd Font), clones this
+config, and installs plugins, treesitter parsers and language servers. Safe to re-run.
+
+macOS / Linux (Homebrew on macOS; apt, dnf, pacman or zypper on Linux):
+
+```sh
+git clone https://github.com/CypheronX/kickstart.nvim.git /tmp/kickstart.nvim
+bash /tmp/kickstart.nvim/install.sh
+```
+
+Windows (winget; x64 and ARM64):
+
+```powershell
+git clone https://github.com/CypheronX/kickstart.nvim.git $env:TEMP\kickstart.nvim
+powershell -ExecutionPolicy Bypass -File $env:TEMP\kickstart.nvim\install.ps1
+```
+
+The config lands in `~/.config/nvim` (Windows: `%LOCALAPPDATA%\nvim`); an existing non-git
+config there is moved to `nvim.bak-<timestamp>`. Afterwards set your terminal font to
+"JetBrainsMono Nerd Font".
+
+Languages set up on top of upstream kickstart:
+
+* **C# / .NET**: Roslyn language server via [roslyn.nvim](https://github.com/seblyng/roslyn.nvim)
+  (`lua/custom/plugins/csharp.lua`), CSharpier formatting (`<leader>f`). Open a folder with a
+  `.sln`/`.slnx`/`.csproj`; with several solutions pick one via `:Roslyn target`.
+* **TypeScript / JavaScript**: `ts_ls` with inlay hints.
+
 ## Introduction
 
 A starting point for Neovim that is:

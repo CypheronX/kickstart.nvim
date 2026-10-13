@@ -249,7 +249,7 @@ do
   vim.api.nvim_create_autocmd('TextYankPost', {
     desc = 'Highlight when yanking (copying) text',
     group = vim.api.nvim_create_augroup('kickstart-highlight-yank', { clear = true }),
-    callback = function() vim.hl.hl_op() end,
+    callback = function() vim.hl.on_yank() end,
   })
 end
 
@@ -388,12 +388,20 @@ do
     styles = {
       comments = { italic = false }, -- Disable italics in comments
     },
+    -- Default comment/selection colors are too close to the background; lift them
+    on_highlights = function(hl, c)
+      hl.Comment = { fg = '#9aa5ce' }
+      hl.Visual = { bg = '#3d59a1', bold = true }
+      hl.VisualNOS = { bg = '#3d59a1' }
+      hl.LineNr = { fg = '#737aa2' }
+      hl.CursorLineNr = { fg = c.orange, bold = true }
+    end,
   }
 
   -- Load the colorscheme here.
   -- Like many other themes, this one has different styles, and you could load
   -- any other, such as 'tokyonight-storm', 'tokyonight-moon', or 'tokyonight-day'.
-  vim.cmd.colorscheme 'tokyonight-night'
+  vim.cmd.colorscheme 'tokyonight-moon'
 
   -- Highlight todo, notes, etc in comments
   vim.pack.add { gh 'folke/todo-comments.nvim' }
@@ -767,7 +775,13 @@ do
   }
 
   -- Automatically install LSPs and related tools to stdpath for Neovim
-  require('mason').setup {}
+  require('mason').setup {
+    -- The Crashdummyy registry provides `roslyn` (the C# language server used by roslyn.nvim)
+    registries = {
+      'github:mason-org/mason-registry',
+      'github:Crashdummyy/mason-registry',
+    },
+  }
 
   -- Ensure the servers and tools above are installed
   --
@@ -779,7 +793,32 @@ do
   local ensure_installed = vim.tbl_keys(servers or {})
   vim.list_extend(ensure_installed, {
     -- You can add other tools here that you want Mason to install
+    'roslyn', -- C# language server, started by roslyn.nvim (see lua/custom/plugins/csharp.lua)
+    'csharpier', -- C# formatter
   })
+
+  -- Mason has no Windows ARM64 builds of these, so never ask Mason for them there;
+  --  they must be installed system-wide instead (install.ps1 does this via winget).
+  if vim.fn.has 'win32' == 1 and vim.uv.os_uname().machine:lower() == 'arm64' then
+    local system_tools = { lua_ls = 'lua-language-server', stylua = 'stylua' }
+    local missing = {}
+    for name, exe in pairs(system_tools) do
+      if vim.fn.executable(exe) == 0 then table.insert(missing, exe) end
+    end
+    ensure_installed = vim.tbl_filter(function(name) return not system_tools[name] end, ensure_installed)
+    if #missing > 0 then
+      vim.schedule(
+        function()
+          vim.notify(
+            ('Not on PATH: %s. Install with `winget install LuaLS.lua-language-server JohnnyMorganz.StyLua`, then open a new terminal.'):format(
+              table.concat(missing, ', ')
+            ),
+            vim.log.levels.WARN
+          )
+        end
+      )
+    end
+  end
 
   require('mason-tool-installer').setup { ensure_installed = ensure_installed }
 
@@ -815,6 +854,7 @@ do
     },
     -- You can also specify external formatters in here.
     formatters_by_ft = {
+      cs = { 'csharpier' },
       -- rust = { 'rustfmt' },
       -- Conform can also run multiple formatters sequentially
       -- python = { "isort", "black" },
@@ -922,8 +962,17 @@ do
   -- NOTE: You can also specify a branch or a specific commit
   vim.pack.add { { src = gh 'nvim-treesitter/nvim-treesitter', version = 'main' } }
 
+  -- Windows without MSVC: `tree-sitter build` defaults to cl.exe, so compile parsers with zig instead.
+  --  zig rejects the MSVC target triple tree-sitter passes, so override it with a mingw-style one.
+  if vim.fn.has 'win32' == 1 and vim.fn.executable 'cl' == 0 and vim.fn.executable 'zig' == 1 then
+    local arch = vim.uv.os_uname().machine:lower() == 'arm64' and 'aarch64' or 'x86_64'
+    vim.env.CC = 'zig cc'
+    vim.env.CFLAGS = '-target ' .. arch .. '-windows-gnu'
+  end
+
   -- Ensure basic parsers are installed
-  local parsers = { 'bash', 'c', 'diff', 'html', 'lua', 'luadoc', 'markdown', 'markdown_inline', 'query', 'vim', 'vimdoc' }
+  local parsers = { 'bash', 'c', 'diff', 'html', 'lua', 'luadoc', 'markdown', 'markdown_inline', 'query', 'vim', 'vimdoc', 'c_sharp', 'xml', 'json', 'powershell' }
+  vim.g.kickstart_parsers = parsers -- read by scripts/bootstrap.lua to wait for the install
   require('nvim-treesitter').install(parsers)
 
   ---@param buf integer
@@ -995,7 +1044,7 @@ do
   -- NOTE: You can add your own plugins, configuration, etc from `lua/custom/plugins/*.lua`
   --
   --  Uncomment the following line and add your plugins to `lua/custom/plugins/*.lua` to get going.
-  -- require 'custom.plugins'
+  require 'custom.plugins'
 end
 
 -- The line beneath this is called `modeline`. See `:help modeline`
