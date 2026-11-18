@@ -76,6 +76,9 @@ Ensure-Tool 'tree-sitter' 'tree-sitter.tree-sitter-cli'
 # --- C compiler for treesitter parsers (init.lua switches tree-sitter to zig when cl.exe is absent) ---
 if ((Test-Command 'cl') -or (Test-Command 'zig')) { Write-Ok 'C compiler found' } else { Ensure-Tool 'zig' 'zig.zig' }
 
+# --- gcc for telescope-fzf-native (its Makefile hardcodes gcc; init.lua only adds it when make exists) ---
+if (Test-Command 'make') { Ensure-Tool 'gcc' 'BrechtSanders.WinLibs.POSIX.UCRT' }
+
 # --- .NET SDK (for the Roslyn C# language server and building projects) ---
 $hasSdk = (Test-Command 'dotnet') -and (@(dotnet --list-sdks 2>$null).Count -gt 0)
 if ($hasSdk) { Write-Ok '.NET SDK found' } else {
